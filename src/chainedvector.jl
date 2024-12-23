@@ -637,13 +637,19 @@ end
 
 Base.@propagate_inbounds function Base.deleteat!(A::ChainedVector, inds::AbstractVector{Bool})
     length(inds) == length(A) || throw(BoundsError(A, inds))
-    prevind = 0
+    i = 1
+    prevind = newind = 0
     for array in A.arrays
-        len = length(array)
-        deleteat!(array, view(inds, (prevind + 1):(prevind + len)))
-        prevind += len
+        oldlen = length(array)
+        deleteat!(array, view(inds, (prevind + 1):(prevind + oldlen)))
+        prevind += oldlen
+        newind += length(array)
+        @inbounds A.arrays[i] = array
+        @inbounds A.inds[i] = newind
+        i += ifelse(isempty(array), 0, 1)
     end
-    setinds!(A.arrays, A.inds)
+    resize!(A.arrays,i-1)
+    resize!(A.inds,i-1)
     return A
 end
 
